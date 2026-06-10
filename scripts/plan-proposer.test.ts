@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { join } from "node:path"
 import test from "node:test"
 
 import {
@@ -102,7 +103,7 @@ test("parseProposePlanArgs reads backup, limit, and output", () => {
 test("defaultPlanOutputPath writes under safe-data plans", () => {
   assert.equal(
     defaultPlanOutputPath("2026-06-10T00:00:00.000Z"),
-    "safe-data\\plans\\proposed-plan-2026-06-10T00-00-00-000Z.json",
+    join("safe-data", "plans", "proposed-plan-2026-06-10T00-00-00-000Z.json"),
   )
 })
 
