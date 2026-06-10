@@ -1,63 +1,49 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This repository is a safety-focused fork of `jordanburke/microsoft-todo-mcp-server`.
 
-## Common Development Commands
-
-### Build and Development
+## Development Commands
 
 ```bash
-pnpm install         # Install dependencies
-pnpm run build       # Build with tsup to build/ directory
-pnpm run dev         # Build and run CLI in one command
+corepack pnpm install
+corepack pnpm test
+corepack pnpm run typecheck
+corepack pnpm run format:check
+corepack pnpm run build
 ```
 
-### Authentication and Setup
+Doctor and auth helpers:
 
 ```bash
-pnpm run auth        # Start OAuth authentication server (port 3000)
-pnpm run create-config # Generate mcp.json from tokens.json
+corepack pnpm run auth:device
+corepack pnpm run doctor
+corepack pnpm run typecheck:doctor
 ```
 
-### Running the Server
+## Architecture
 
-```bash
-pnpm run cli         # Run MCP server via CLI wrapper
-pnpm start           # Run MCP server directly
-```
+- `src/todo-index.ts`: MCP server and Microsoft Graph tool wiring.
+- `src/safe-plan.ts`: strict safe-plan validation, preview records, confirmation phrase logic, safe apply execution, and audit event shaping.
+- `src/oauth-refresh.ts`: refresh-token request builder shared by runtime and doctor scripts.
+- `scripts/auth-device.ts`: device-code auth for remote operation.
+- `scripts/doctor.ts`: live Microsoft To Do compatibility diagnostics.
 
-## Architecture Overview
+## Safety Rules
 
-This is a Model Context Protocol (MCP) server that enables AI assistants to interact with Microsoft To Do via the Microsoft Graph API. The codebase follows a modular architecture with four main components:
+- The supported AI write path is `validate_plan -> preview_plan -> apply_plan`.
+- `apply_plan` must require a matching saved `preview_id` and exact confirmation phrase.
+- `apply_plan` must create a backup before any write.
+- Audit logs must not include tokens or full task bodies.
+- Permanent delete is not part of the safe plan schema.
+- Direct upstream destructive tools must stay hidden unless `MSTODO_ENABLE_UNSAFE_TOOLS=1`.
 
-1. **MCP Server** (`src/todo-index.ts`): Core server implementing the MCP protocol with 13 tools for Microsoft To Do operations
-2. **CLI Wrapper** (`src/cli.ts`): Executable entry point that handles token loading from environment or file
-3. **Auth Server** (`src/auth-server.js`): Express server implementing OAuth 2.0 flow with MSAL
-4. **Config Generator** (`src/create-mcp-config.ts`): Utility to create MCP configuration files
+## Local Data
 
-### Key Architectural Patterns
+Do not commit:
 
-- **Token Management**: Tokens are stored in `tokens.json` with automatic refresh 5 minutes before expiration
-- **Multi-tenant Support**: Configurable for different Microsoft account types via TENANT_ID
-- **Error Handling**: Special handling for personal Microsoft accounts (MailboxNotEnabledForRESTAPI)
-- **Type Safety**: Strict TypeScript with Zod schemas for parameter validation
+- `tokens.json`
+- `.mstodo-device-session.json`
+- `safe-data/`
+- `.env`
 
-### Microsoft Graph API Integration
-
-The server communicates with Microsoft Graph API v1.0:
-
-- Base URL: `https://graph.microsoft.com/v1.0`
-- Three-level hierarchy: Lists → Tasks → Checklist Items
-- Supports OData query parameters for filtering and sorting
-
-### Environment Configuration
-
-- `MSTODO_TOKEN_FILE`: Custom path for tokens.json (defaults to ./tokens.json)
-- `.env` file required for authentication with CLIENT_ID, CLIENT_SECRET, TENANT_ID, REDIRECT_URI
-
-## Important Notes
-
-- Always run `pnpm run build` after modifying TypeScript files (uses tsup for bundling)
-- The auth server runs on port 3000 by default
-- Tokens are automatically refreshed using the refresh token when needed
-- Personal Microsoft accounts have limited API access compared to work/school accounts
+These may contain tokens or personal task data.

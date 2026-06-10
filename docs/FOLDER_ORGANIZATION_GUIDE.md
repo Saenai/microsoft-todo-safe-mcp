@@ -1,5 +1,7 @@
 # Microsoft To Do MCP Server - Folder Organization Enhancement
 
+> Legacy upstream note: this guide documents low-level organization helpers inherited from the original repository. In this fork, direct write/archive tools are hidden by default. Prefer the safe workflow in `docs/SAFE_PLAN_WORKFLOW.md`.
+
 ## Overview
 
 While the Microsoft Graph API doesn't expose folder/group information for To Do lists, this MCP server now includes enhanced tools that provide folder-like organization based on naming patterns and list properties.
@@ -43,6 +45,8 @@ get-task-lists-organized --groupBy shared
 - 📋 **Other Lists**: Everything else
 
 ### 2. `archive-completed-tasks`
+
+Warning: this legacy helper is considered unsafe for autonomous AI use because it can write directly and historically removed source tasks after copying. It is hidden unless `MSTODO_ENABLE_UNSAFE_TOOLS=1`. Prefer `preview_plan` and `apply_plan`.
 
 Move completed tasks older than a specified number of days from one list to another (archive) list.
 
