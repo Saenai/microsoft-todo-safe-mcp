@@ -21,6 +21,10 @@ dist/
 
 # Tokens file (contains sensitive authentication data)
 tokens.json
+.mstodo-device-session.json
+
+# Local backups and audit logs may contain personal task data
+safe-data/
 
 # Editor directories and files
 .idea/

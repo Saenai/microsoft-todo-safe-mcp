@@ -1,10 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
-import { readFileSync, writeFileSync, existsSync } from "fs"
-import { join } from "path"
+import { appendFileSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
+import { join, resolve } from "path"
 import dotenv from "dotenv"
 import { tokenManager } from "./token-manager.js"
+import {
+  applySafePlan,
+  createBackupEnvelope,
+  createPlanPreviewRecord,
+  resolveSafeLists,
+  validatePlan,
+  type IndexedTask,
+  type SafePlanExecutor,
+} from "./safe-plan.js"
 
 // Load environment variables
 dotenv.config()
@@ -21,6 +30,31 @@ const server = new McpServer({
   name: "mstodo",
   version: "1.0.0",
 })
+
+const unsafeDirectToolNames = new Set([
+  "create-task-list",
+  "update-task-list",
+  "delete-task-list",
+  "create-task",
+  "update-task",
+  "delete-task",
+  "create-checklist-item",
+  "update-checklist-item",
+  "delete-checklist-item",
+  "archive-completed-tasks",
+  "test-graph-api-exploration",
+])
+
+if (process.env.MSTODO_ENABLE_UNSAFE_TOOLS !== "1") {
+  const registerTool = server.tool.bind(server) as any
+  ;(server as any).tool = (name: string, ...args: any[]) => {
+    if (unsafeDirectToolNames.has(name)) {
+      console.error(`Skipping unsafe direct MCP tool by default: ${name}`)
+      return undefined
+    }
+    return registerTool(name, ...args)
+  }
+}
 
 // Helper function for making Microsoft Graph API requests
 async function makeGraphRequest<T>(url: string, token: string, method = "GET", body?: any): Promise<T | null> {
@@ -280,6 +314,397 @@ interface ChecklistItem {
   isChecked: boolean
   createdDateTime?: string
 }
+
+const SAFE_DATA_DIR = process.env.MSTODO_SAFE_DATA_DIR || join(process.cwd(), "safe-data")
+const SAFE_BACKUP_DIR = join(SAFE_DATA_DIR, "backups")
+const SAFE_PREVIEW_DIR = join(SAFE_DATA_DIR, "previews")
+const SAFE_AUDIT_DIR = join(SAFE_DATA_DIR, "audit")
+
+async function makePagedGraphRequest<T>(url: string, token: string): Promise<T[]> {
+  const results: T[] = []
+  let nextUrl: string | undefined = url
+
+  while (nextUrl) {
+    const response: { value?: T[]; "@odata.nextLink"?: string } | null = await makeGraphRequest(nextUrl, token)
+    if (!response) break
+    results.push(...(response.value || []))
+    nextUrl = response["@odata.nextLink"]
+  }
+
+  return results
+}
+
+async function fetchVisibleLists(token: string): Promise<TaskList[]> {
+  return makePagedGraphRequest<TaskList>(`${MS_GRAPH_BASE}/me/todo/lists`, token)
+}
+
+async function fetchTasksForList(token: string, listId: string): Promise<Task[]> {
+  return makePagedGraphRequest<Task>(
+    `${MS_GRAPH_BASE}/me/todo/lists/${encodeURIComponent(listId)}/tasks?$top=100`,
+    token,
+  )
+}
+
+async function fetchChecklistItems(token: string, listId: string, taskId: string): Promise<ChecklistItem[]> {
+  const response = await makeGraphRequest<{ value: ChecklistItem[] }>(
+    `${MS_GRAPH_BASE}/me/todo/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}/checklistItems`,
+    token,
+  )
+  return response?.value || []
+}
+
+async function fetchTasksByList(
+  token: string,
+  lists: TaskList[],
+  includeChecklistItems = false,
+): Promise<Record<string, any[]>> {
+  const tasksByList: Record<string, any[]> = {}
+
+  for (const list of lists) {
+    const tasks = await fetchTasksForList(token, list.id)
+    if (includeChecklistItems) {
+      for (const task of tasks as any[]) {
+        task.checklistItems = await fetchChecklistItems(token, list.id, task.id)
+      }
+    }
+    tasksByList[list.id] = tasks
+  }
+
+  return tasksByList
+}
+
+function buildTaskIndex(tasksByList: Record<string, any[]>): Record<string, IndexedTask> {
+  const index: Record<string, IndexedTask> = {}
+  for (const [listId, tasks] of Object.entries(tasksByList)) {
+    for (const task of tasks) {
+      if (!task.id) continue
+      index[task.id] = {
+        ...task,
+        id: task.id,
+        listId,
+      }
+    }
+  }
+  return index
+}
+
+async function ensureSafeLists(
+  token: string,
+): Promise<{ safeLists: ReturnType<typeof resolveSafeLists>; created: TaskList[] }> {
+  let lists = await fetchVisibleLists(token)
+  let safeLists = resolveSafeLists(lists)
+  const created: TaskList[] = []
+
+  for (const displayName of safeLists.missing) {
+    const createdList = await makeGraphRequest<TaskList>(`${MS_GRAPH_BASE}/me/todo/lists`, token, "POST", {
+      displayName,
+    })
+    if (createdList) created.push(createdList)
+  }
+
+  if (created.length > 0) {
+    lists = await fetchVisibleLists(token)
+    safeLists = resolveSafeLists(lists)
+  }
+
+  return { safeLists, created }
+}
+
+function requireCompleteSafeLists(safeLists: ReturnType<typeof resolveSafeLists>): string[] {
+  return safeLists.missing.length === 0
+    ? []
+    : [`Missing safe lists: ${safeLists.missing.join(", ")}. Run setup_safe_lists first.`]
+}
+
+function backupPath(): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+  return join(SAFE_BACKUP_DIR, `mstodo-backup-${timestamp}.json`)
+}
+
+function previewPath(previewId: string): string {
+  return join(SAFE_PREVIEW_DIR, `${previewId}.json`)
+}
+
+function auditPath(): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+  return join(SAFE_AUDIT_DIR, `mstodo-audit-${timestamp}.jsonl`)
+}
+
+function ensureSafeDataDirs(): void {
+  mkdirSync(SAFE_BACKUP_DIR, { recursive: true })
+  mkdirSync(SAFE_PREVIEW_DIR, { recursive: true })
+  mkdirSync(SAFE_AUDIT_DIR, { recursive: true })
+}
+
+async function createBackupFile(token: string): Promise<{ path: string; listCount: number; taskCount: number }> {
+  const account = await makeGraphRequest(`${MS_GRAPH_BASE}/me`, token)
+  const lists = await fetchVisibleLists(token)
+  const tasksByList = await fetchTasksByList(token, lists, true)
+  const envelope = createBackupEnvelope({ account, lists, tasksByList })
+  const outputPath = backupPath()
+  mkdirSync(SAFE_BACKUP_DIR, { recursive: true })
+  writeFileSync(outputPath, JSON.stringify(envelope, null, 2), "utf8")
+  return {
+    path: outputPath,
+    listCount: lists.length,
+    taskCount: Object.values(tasksByList).reduce((sum, tasks) => sum + tasks.length, 0),
+  }
+}
+
+function writeAuditEvents(events: Array<Record<string, unknown>>): string {
+  mkdirSync(SAFE_AUDIT_DIR, { recursive: true })
+  const outputPath = auditPath()
+  for (const event of events) {
+    appendFileSync(outputPath, `${JSON.stringify(event)}\n`, "utf8")
+  }
+  return outputPath
+}
+
+function isPathInside(parent: string, child: string): boolean {
+  const resolvedParent = resolve(parent)
+  const resolvedChild = resolve(child)
+  return resolvedChild === resolvedParent || resolvedChild.startsWith(`${resolvedParent}\\`)
+}
+
+function jsonText(value: unknown): { content: Array<{ type: "text"; text: string }> } {
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(value, null, 2),
+      },
+    ],
+  }
+}
+
+server.tool(
+  "setup_safe_lists",
+  "Create or bind the soft-archive lists Archive, Someday, and Needs Review.",
+  {},
+  async () => {
+    const token = await getAccessToken()
+    if (!token) return jsonText({ ok: false, error: "Failed to authenticate with Microsoft API" })
+
+    const { safeLists, created } = await ensureSafeLists(token)
+    return jsonText({
+      ok: safeLists.missing.length === 0,
+      safe_lists: safeLists,
+      created: created.map((list) => ({ id: list.id, displayName: list.displayName })),
+    })
+  },
+)
+
+server.tool(
+  "export_backup",
+  "Export all visible Microsoft To Do lists, tasks, and checklist items to a local JSON backup file.",
+  {},
+  async () => {
+    const token = await getAccessToken()
+    if (!token) return jsonText({ ok: false, error: "Failed to authenticate with Microsoft API" })
+
+    const backup = await createBackupFile(token)
+
+    return jsonText({
+      ok: true,
+      backup_path: backup.path,
+      list_count: backup.listCount,
+      task_count: backup.taskCount,
+    })
+  },
+)
+
+server.tool(
+  "validate_plan",
+  "Validate a strict safe task-management JSON plan. This never writes to Microsoft To Do.",
+  {
+    plan: z.any().describe("Safe task-management JSON plan"),
+  },
+  async ({ plan }) => {
+    const token = await getAccessToken()
+    if (!token) return jsonText({ ok: false, error: "Failed to authenticate with Microsoft API" })
+
+    const lists = await fetchVisibleLists(token)
+    const safeLists = resolveSafeLists(lists)
+    const safeListErrors = requireCompleteSafeLists(safeLists)
+    const tasksByList = await fetchTasksByList(token, lists, false)
+    const result = validatePlan(plan, { taskIndex: buildTaskIndex(tasksByList), safeLists })
+
+    return jsonText({
+      ok: result.ok && safeListErrors.length === 0,
+      errors: [...safeListErrors, ...result.errors],
+      safe_lists: safeLists,
+    })
+  },
+)
+
+server.tool(
+  "preview_plan",
+  "Preview a validated safe task-management JSON plan. This never writes to Microsoft To Do.",
+  {
+    plan: z.any().describe("Safe task-management JSON plan"),
+  },
+  async ({ plan }) => {
+    const token = await getAccessToken()
+    if (!token) return jsonText({ ok: false, error: "Failed to authenticate with Microsoft API" })
+
+    const lists = await fetchVisibleLists(token)
+    const safeLists = resolveSafeLists(lists)
+    const safeListErrors = requireCompleteSafeLists(safeLists)
+    const tasksByList = await fetchTasksByList(token, lists, false)
+    const context = { taskIndex: buildTaskIndex(tasksByList), safeLists }
+    const result = validatePlan(plan, context)
+
+    if (!result.ok || safeListErrors.length > 0) {
+      return jsonText({
+        ok: false,
+        errors: [...safeListErrors, ...result.errors],
+        safe_lists: safeLists,
+      })
+    }
+
+    return jsonText({
+      ok: true,
+      ...(() => {
+        const previewRecord = createPlanPreviewRecord(result.plan!, context)
+        mkdirSync(SAFE_PREVIEW_DIR, { recursive: true })
+        writeFileSync(previewPath(previewRecord.preview_id), JSON.stringify(previewRecord, null, 2), "utf8")
+        return {
+          preview_id: previewRecord.preview_id,
+          confirmation_phrase: previewRecord.confirmation_phrase,
+          preview: previewRecord.preview,
+        }
+      })(),
+      writes_performed: 0,
+    })
+  },
+)
+
+server.tool(
+  "apply_plan",
+  "Apply a previously previewed safe task-management plan after explicit confirmation. Creates a backup and JSONL audit log before writing.",
+  {
+    plan: z.any().describe("Safe task-management JSON plan"),
+    preview_id: z.string().min(1).describe("preview_id returned by preview_plan"),
+    confirmation: z.string().min(1).describe("Exact confirmation phrase returned by preview_plan"),
+    fail_fast: z.boolean().optional().describe("Stop at the first failed action. Defaults to true."),
+  },
+  async ({ plan, preview_id, confirmation, fail_fast }) => {
+    const token = await getAccessToken()
+    if (!token) return jsonText({ ok: false, error: "Failed to authenticate with Microsoft API" })
+
+    ensureSafeDataDirs()
+
+    const lists = await fetchVisibleLists(token)
+    const safeLists = resolveSafeLists(lists)
+    const safeListErrors = requireCompleteSafeLists(safeLists)
+    const tasksByList = await fetchTasksByList(token, lists, true)
+    const context = { taskIndex: buildTaskIndex(tasksByList), safeLists }
+    const validation = validatePlan(plan, context)
+
+    if (!validation.ok || safeListErrors.length > 0 || !validation.plan) {
+      return jsonText({
+        ok: false,
+        errors: [...safeListErrors, ...validation.errors],
+        writes_performed: 0,
+      })
+    }
+
+    const previewRecord = createPlanPreviewRecord(validation.plan, context)
+    const expectedPreviewPath = previewPath(preview_id)
+    if (previewRecord.preview_id !== preview_id || !existsSync(expectedPreviewPath)) {
+      return jsonText({
+        ok: false,
+        errors: ["preview_id does not match the current validated plan, or preview_plan was not run first"],
+        expected_preview_id: previewRecord.preview_id,
+        writes_performed: 0,
+      })
+    }
+
+    const backup = await createBackupFile(token)
+    const executor: SafePlanExecutor = {
+      createTask: async (listId, payload) => {
+        const response = await makeGraphRequest<Record<string, unknown>>(
+          `${MS_GRAPH_BASE}/me/todo/lists/${encodeURIComponent(listId)}/tasks`,
+          token,
+          "POST",
+          payload,
+        )
+        if (!response) throw new Error(`Failed to create task in list ${listId}`)
+        return { id: typeof response.id === "string" ? response.id : undefined }
+      },
+      updateTask: async (listId, taskId, payload) => {
+        const response = await makeGraphRequest(
+          `${MS_GRAPH_BASE}/me/todo/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}`,
+          token,
+          "PATCH",
+          payload,
+        )
+        if (!response) throw new Error(`Failed to update task ${taskId}`)
+        return response
+      },
+      createChecklistItem: async (listId, taskId, payload) => {
+        const response = await makeGraphRequest(
+          `${MS_GRAPH_BASE}/me/todo/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}/checklistItems`,
+          token,
+          "POST",
+          payload,
+        )
+        if (!response) throw new Error(`Failed to create checklist item on task ${taskId}`)
+        return response
+      },
+    }
+
+    const applyResult = await applySafePlan(validation.plan, context, executor, {
+      confirmation,
+      failFast: fail_fast ?? true,
+    })
+    const auditLogPath = applyResult.audit_events.length > 0 ? writeAuditEvents(applyResult.audit_events) : undefined
+
+    return jsonText({
+      ok: applyResult.ok,
+      summary: validation.plan.summary,
+      backup_path: backup.path,
+      audit_log_path: auditLogPath,
+      successes: applyResult.successes,
+      failures: applyResult.failures,
+      errors: applyResult.errors,
+      fail_fast: fail_fast ?? true,
+      fail_fast_triggered: applyResult.fail_fast_triggered,
+      writes_performed: applyResult.successes.length + applyResult.failures.length,
+    })
+  },
+)
+
+server.tool(
+  "restore_preview",
+  "Preview a local backup file for restore planning. This never writes to Microsoft To Do.",
+  {
+    backup_path: z.string().min(1).describe("Path returned by export_backup or apply_plan"),
+  },
+  async ({ backup_path }) => {
+    if (!isPathInside(SAFE_BACKUP_DIR, backup_path) || !existsSync(backup_path)) {
+      return jsonText({
+        ok: false,
+        error: "backup_path must exist inside the local safe-data/backups directory",
+        writes_performed: 0,
+      })
+    }
+
+    const backup = JSON.parse(readFileSync(backup_path, "utf8")) as {
+      lists?: unknown[]
+      tasks_by_list?: Record<string, unknown[]>
+      created_at?: string
+    }
+    return jsonText({
+      ok: true,
+      backup_path,
+      created_at: backup.created_at,
+      list_count: backup.lists?.length ?? 0,
+      task_count: Object.values(backup.tasks_by_list ?? {}).reduce((sum, tasks) => sum + tasks.length, 0),
+      writes_performed: 0,
+    })
+  },
+)
 
 // Register tools
 server.tool(

@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync, existsSync } from "fs"
 import { join } from "path"
 import { homedir } from "os"
+import { buildRefreshTokenRequest } from "./oauth-refresh.js"
 
 interface TokenData {
   accessToken: string
@@ -104,27 +105,24 @@ export class TokenManager {
       const clientSecret = this.currentTokens?.clientSecret || process.env.CLIENT_SECRET
       const tenantId = this.currentTokens?.tenantId || process.env.TENANT_ID || "organizations"
 
-      if (!clientId || !clientSecret) {
+      if (!clientId) {
         console.error("Missing client credentials for token refresh")
         return null
       }
 
-      const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
-
-      const formData = new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-        scope: "offline_access Tasks.Read Tasks.ReadWrite Tasks.Read.Shared Tasks.ReadWrite.Shared User.Read",
+      const refreshRequest = buildRefreshTokenRequest({
+        tenantId,
+        clientId,
+        clientSecret,
+        refreshToken,
       })
 
-      const response = await fetch(tokenEndpoint, {
+      const response = await fetch(refreshRequest.url, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: formData,
+        body: refreshRequest.body,
       })
 
       if (!response.ok) {
@@ -143,8 +141,10 @@ export class TokenManager {
         refreshToken: data.refresh_token || refreshToken,
         expiresAt: Date.now() + data.expires_in * 1000 - 5 * 60 * 1000, // 5 min buffer
         clientId,
-        clientSecret,
         tenantId,
+      }
+      if (clientSecret) {
+        newTokens.clientSecret = clientSecret
       }
 
       // Save the refreshed tokens
