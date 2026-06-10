@@ -2,9 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { appendFileSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
-import { join, resolve } from "path"
+import { join, resolve, sep } from "path"
 import dotenv from "dotenv"
 import { tokenManager } from "./token-manager.js"
+import { proposePlanFromBackup, summarizePlanProposal } from "./plan-proposer.js"
 import {
   applySafePlan,
   createBackupEnvelope,
@@ -319,6 +320,7 @@ const SAFE_DATA_DIR = process.env.MSTODO_SAFE_DATA_DIR || join(process.cwd(), "s
 const SAFE_BACKUP_DIR = join(SAFE_DATA_DIR, "backups")
 const SAFE_PREVIEW_DIR = join(SAFE_DATA_DIR, "previews")
 const SAFE_AUDIT_DIR = join(SAFE_DATA_DIR, "audit")
+const SAFE_PLAN_DIR = join(SAFE_DATA_DIR, "plans")
 
 async function makePagedGraphRequest<T>(url: string, token: string): Promise<T[]> {
   const results: T[] = []
@@ -425,6 +427,11 @@ function previewPath(previewId: string): string {
   return join(SAFE_PREVIEW_DIR, `${previewId}.json`)
 }
 
+function planPath(): string {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+  return join(SAFE_PLAN_DIR, `proposed-plan-${timestamp}.json`)
+}
+
 function auditPath(): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
   return join(SAFE_AUDIT_DIR, `mstodo-audit-${timestamp}.jsonl`)
@@ -432,6 +439,7 @@ function auditPath(): string {
 
 function ensureSafeDataDirs(): void {
   mkdirSync(SAFE_BACKUP_DIR, { recursive: true })
+  mkdirSync(SAFE_PLAN_DIR, { recursive: true })
   mkdirSync(SAFE_PREVIEW_DIR, { recursive: true })
   mkdirSync(SAFE_AUDIT_DIR, { recursive: true })
 }
@@ -463,7 +471,7 @@ function writeAuditEvents(events: Array<Record<string, unknown>>): string {
 function isPathInside(parent: string, child: string): boolean {
   const resolvedParent = resolve(parent)
   const resolvedChild = resolve(child)
-  return resolvedChild === resolvedParent || resolvedChild.startsWith(`${resolvedParent}\\`)
+  return resolvedChild === resolvedParent || resolvedChild.startsWith(`${resolvedParent}${sep}`)
 }
 
 function jsonText(value: unknown): { content: Array<{ type: "text"; text: string }> } {
@@ -509,6 +517,38 @@ server.tool(
       backup_path: backup.path,
       list_count: backup.listCount,
       task_count: backup.taskCount,
+    })
+  },
+)
+
+server.tool(
+  "propose_plan",
+  "Generate a conservative safe task-management plan from a local backup. This never writes to Microsoft To Do.",
+  {
+    backup_path: z.string().min(1).describe("Path returned by export_backup or the export:backup script"),
+    limit: z.number().int().min(1).max(50).optional().describe("Maximum number of actions. Defaults to 5."),
+  },
+  async ({ backup_path, limit }) => {
+    if (!isPathInside(SAFE_BACKUP_DIR, backup_path) || !existsSync(backup_path)) {
+      return jsonText({
+        ok: false,
+        error: "backup_path must exist inside safe-data/backups",
+        writes_performed: 0,
+      })
+    }
+
+    const backup = JSON.parse(readFileSync(backup_path, "utf8"))
+    const plan = proposePlanFromBackup(backup, { limit })
+    const outputPath = planPath()
+    mkdirSync(SAFE_PLAN_DIR, { recursive: true })
+    writeFileSync(outputPath, JSON.stringify(plan, null, 2), "utf8")
+
+    return jsonText({
+      ok: true,
+      plan_path: outputPath,
+      ...summarizePlanProposal(plan),
+      plan,
+      writes_performed: 0,
     })
   },
 )

@@ -30,6 +30,12 @@ Before asking an AI to propose changes, export a full backup:
 export_backup
 ```
 
+For a terminal-only read backup, run:
+
+```powershell
+corepack pnpm run export:backup
+```
+
 Backups are written under:
 
 ```text
@@ -38,19 +44,33 @@ safe-data/backups/
 
 ## 3. Generate A Plan
 
-For a conservative starter plan, run:
+For a conservative starter plan from MCP, call:
+
+```text
+propose_plan
+```
+
+Required input:
+
+- `backup_path`, under `safe-data/backups/`
+
+Optional input:
+
+- `limit`, default `5`, maximum `50`
+
+For the same local-only workflow from a terminal, run:
 
 ```powershell
 corepack pnpm run propose:plan -- --backup safe-data/backups/<backup>.json --limit 5
 ```
 
-This script only reads a local backup and writes a local plan file under:
+Both paths only read a local backup and write a local plan file under:
 
 ```text
 safe-data/plans/
 ```
 
-It does not call Microsoft Graph and performs no writes.
+They do not call Microsoft Graph and perform no Microsoft To Do writes.
 
 The first strategy version only proposes:
 

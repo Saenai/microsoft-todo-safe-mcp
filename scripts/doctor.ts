@@ -154,7 +154,7 @@ async function refreshAccessToken(tokens: StoredTokens): Promise<StoredTokens | 
   return refreshed
 }
 
-async function getAccessToken(): Promise<string | null> {
+export async function getAccessToken(): Promise<string | null> {
   const tokens = readStoredTokens()
   if (!tokens?.accessToken) return null
   if (tokens.expiresAt && Date.now() >= tokens.expiresAt) {

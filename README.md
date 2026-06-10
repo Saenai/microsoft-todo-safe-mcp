@@ -35,6 +35,7 @@ Implemented:
 - doctor script for live Microsoft Graph To Do compatibility checks
 - conservative local safe-plan proposal script
 - full JSON backup export
+- MCP backup-based `propose_plan` tool
 - safe list setup for Archive, Someday, and Needs Review
 - strict safe-plan schema validation
 - dry-run plan preview with saved `preview_id`
@@ -210,6 +211,7 @@ Safe tools:
 
 - `setup_safe_lists`
 - `export_backup`
+- `propose_plan`
 - `validate_plan`
 - `preview_plan`
 - `apply_plan`
@@ -222,7 +224,13 @@ Unsafe low-level tools are hidden unless `MSTODO_ENABLE_UNSAFE_TOOLS=1`.
 
 1. Call `setup_safe_lists`.
 2. Call `export_backup`.
-3. Generate a conservative starter plan:
+3. Generate a conservative starter plan with either the MCP tool:
+
+   ```text
+   propose_plan
+   ```
+
+   or the local CLI:
 
    ```powershell
    corepack pnpm run propose:plan -- --backup safe-data/backups/<backup>.json --limit 5
@@ -258,6 +266,7 @@ Useful scripts:
 
 - `corepack pnpm run auth:device`
 - `corepack pnpm run doctor`
+- `corepack pnpm run export:backup`
 - `corepack pnpm run propose:plan -- --backup safe-data/backups/<backup>.json --limit 5`
 - `corepack pnpm run test:doctor`
 - `corepack pnpm run typecheck:doctor`

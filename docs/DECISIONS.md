@@ -221,6 +221,13 @@ Completed in the second phase:
 6. Soft move copies checklist items when the source task data includes them.
 7. Added `restore_preview` as a read-only backup summary tool. Restore apply remains unsupported.
 
+Completed in the current completion pass:
+
+1. Added `export:backup` for terminal-only full JSON backups using the same local safety posture as the MCP backup export.
+2. Added `propose_plan` as an MCP tool that reads only local backup files under `safe-data/backups/`, writes proposed plans under `safe-data/plans/`, and performs zero Microsoft To Do writes.
+3. Kept the first plan proposer conservative: it skips completed tasks and near-due tasks, and only proposes `move_to_someday`, `move_to_needs_review`, or `create_checklist_item`.
+4. Documented both the MCP and local CLI paths for backup and conservative plan generation.
+
 Detailed usage is in `docs/SAFE_PLAN_WORKFLOW.md`.
 
 Deferred:
