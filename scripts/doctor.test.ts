@@ -81,5 +81,9 @@ test("summarizeReport reports failures without leaking tokens", () => {
 })
 
 test("isDirectRun handles Windows-style argv paths", () => {
-  assert.equal(isDirectRun("file:///C:/repo/scripts/doctor.ts", "C:\\repo\\scripts\\doctor.ts"), true)
+  if (process.platform === "win32") {
+    assert.equal(isDirectRun("file:///C:/repo/scripts/doctor.ts", "C:\\repo\\scripts\\doctor.ts"), true)
+  } else {
+    assert.equal(isDirectRun("file:///repo/scripts/doctor.ts", "/repo/scripts/doctor.ts"), true)
+  }
 })

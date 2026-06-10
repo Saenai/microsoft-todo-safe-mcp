@@ -114,7 +114,7 @@ See [docs/SAFE_PLAN_WORKFLOW.md](docs/SAFE_PLAN_WORKFLOW.md).
 
 ## Prerequisites
 
-- Node.js 20 or newer recommended
+- Node.js 22 or newer
 - Corepack / pnpm
 - Microsoft account with Microsoft To Do enabled
 - Microsoft Entra / Azure app registration for OAuth

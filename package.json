@@ -10,6 +10,9 @@
     "express": "^5.1.0",
     "zod": "^3.25.76"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "node --test --experimental-strip-types scripts/*.test.ts",
     "test:doctor": "node --test --experimental-strip-types scripts/doctor.test.ts",
