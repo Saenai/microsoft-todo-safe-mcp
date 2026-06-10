@@ -38,6 +38,28 @@ safe-data/backups/
 
 ## 3. Generate A Plan
 
+For a conservative starter plan, run:
+
+```powershell
+corepack pnpm run propose:plan -- --backup safe-data/backups/<backup>.json --limit 5
+```
+
+This script only reads a local backup and writes a local plan file under:
+
+```text
+safe-data/plans/
+```
+
+It does not call Microsoft Graph and performs no writes.
+
+The first strategy version only proposes:
+
+- `move_to_needs_review`
+- `move_to_someday`
+- `create_checklist_item`
+
+Review the generated plan before validation and preview.
+
 The first plan schema is:
 
 ```json

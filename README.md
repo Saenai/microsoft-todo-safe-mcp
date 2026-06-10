@@ -33,6 +33,7 @@ Implemented:
 - community repository evaluation notes
 - device-code authentication for remote/iPhone operation
 - doctor script for live Microsoft Graph To Do compatibility checks
+- conservative local safe-plan proposal script
 - full JSON backup export
 - safe list setup for Archive, Someday, and Needs Review
 - strict safe-plan schema validation
@@ -221,16 +222,23 @@ Unsafe low-level tools are hidden unless `MSTODO_ENABLE_UNSAFE_TOOLS=1`.
 
 1. Call `setup_safe_lists`.
 2. Call `export_backup`.
-3. Ask the AI to generate a schema version `1.0` plan.
-4. Call `validate_plan`.
-5. Call `preview_plan`.
-6. Review `preview_id`, `confirmation_phrase`, and effects.
-7. Call `apply_plan` with the same plan, matching `preview_id`, and exact confirmation phrase.
+3. Generate a conservative starter plan:
+
+   ```powershell
+   corepack pnpm run propose:plan -- --backup safe-data/backups/<backup>.json --limit 5
+   ```
+
+4. Review or edit the generated schema version `1.0` plan.
+5. Call `validate_plan`.
+6. Call `preview_plan`.
+7. Review `preview_id`, `confirmation_phrase`, and effects.
+8. Call `apply_plan` with the same plan, matching `preview_id`, and exact confirmation phrase.
 
 Local outputs:
 
 ```text
 safe-data/backups/
+safe-data/plans/
 safe-data/previews/
 safe-data/audit/
 ```
@@ -250,6 +258,7 @@ Useful scripts:
 
 - `corepack pnpm run auth:device`
 - `corepack pnpm run doctor`
+- `corepack pnpm run propose:plan -- --backup safe-data/backups/<backup>.json --limit 5`
 - `corepack pnpm run test:doctor`
 - `corepack pnpm run typecheck:doctor`
 
