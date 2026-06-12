@@ -8,11 +8,11 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  SERVER_DIR: .codex/skills/microsoft-todo-safe-mcp/server
+  SERVER_DIR: skills/microsoft-todo-safe-mcp/server
 
 defaults:
   run:
-    working-directory: .codex/skills/microsoft-todo-safe-mcp/server
+    working-directory: skills/microsoft-todo-safe-mcp/server
 
 jobs:
   build:

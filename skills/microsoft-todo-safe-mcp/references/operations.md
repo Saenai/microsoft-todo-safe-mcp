@@ -8,7 +8,7 @@
 - Idle MCP server working set: about 42-46 MB
 - Idle CPU: effectively flat after startup
 - Installed skill/server: `%USERPROFILE%\.codex\skills\microsoft-todo-safe-mcp\server`
-- Repository source: `.codex\skills\microsoft-todo-safe-mcp`
+- Repository source: `skills\microsoft-todo-safe-mcp`
 
 ## Known Fixes Applied
 

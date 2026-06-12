@@ -39,7 +39,7 @@ installed local copy when changing skill behavior.
 Install or refresh the local copy with:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .codex\skills\microsoft-todo-safe-mcp\scripts\install.ps1
+powershell -ExecutionPolicy Bypass -File skills\microsoft-todo-safe-mcp\scripts\install.ps1
 ```
 
 The installer copies the complete skill package, installs/builds the bundled
