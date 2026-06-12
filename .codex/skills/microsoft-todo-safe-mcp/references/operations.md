@@ -7,8 +7,8 @@
 - Project pnpm: `10.21.0`
 - Idle MCP server working set: about 42-46 MB
 - Idle CPU: effectively flat after startup
-- Installed skill/server: `C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\server`
-- Repository source: `D:\SharedSpace\CODEX\projects\microsoft-todo-safe-mcp\.codex\skills\microsoft-todo-safe-mcp`
+- Installed skill/server: `%USERPROFILE%\.codex\skills\microsoft-todo-safe-mcp\server`
+- Repository source: `.codex\skills\microsoft-todo-safe-mcp`
 
 ## Known Fixes Applied
 
@@ -65,6 +65,7 @@ Use a self-contained skill package:
 - Skill files: task selection, safety rules, operational workflow, diagnostics policy
 - Bundled `server/`: OAuth, Microsoft Graph, To Do reads/writes, safe plan execution
 - `scripts/install.ps1`: copies the skill, installs/builds the server, updates Codex config, and runs smoke validation
+- `scripts/validate_agentskill.mjs`: validates the skill against the core agentskills.io structural rules
 
 Do not store OAuth token values inside the skill. Token storage remains under
 `%APPDATA%\microsoft-todo-mcp\tokens.json`.

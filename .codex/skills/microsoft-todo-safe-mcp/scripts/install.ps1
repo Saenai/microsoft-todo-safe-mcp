@@ -2,10 +2,31 @@ param(
   [string]$DestinationRoot = (Join-Path $env:USERPROFILE ".codex\skills"),
   [string]$CodexConfig = (Join-Path $env:USERPROFILE ".codex\config.toml"),
   [switch]$SkipBuild,
-  [switch]$SkipSmoke
+  [switch]$SkipSmoke,
+  [switch]$Help
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Help) {
+  @"
+Install or refresh the Microsoft To Do Safe MCP Agent Skill.
+
+Usage:
+  powershell -ExecutionPolicy Bypass -File scripts\install.ps1 [options]
+
+Options:
+  -DestinationRoot <path>  Skills directory. Default: %USERPROFILE%\.codex\skills
+  -CodexConfig <path>      Codex config.toml path. Default: %USERPROFILE%\.codex\config.toml
+  -SkipBuild               Copy/configure only; do not run pnpm install/build.
+  -SkipSmoke               Do not run the MCP initialize/tools-list smoke test.
+  -Help                    Show this help.
+
+This script does not read or print token values. Tokens stay under:
+  %APPDATA%\microsoft-todo-mcp\tokens.json
+"@
+  exit 0
+}
 
 function Escape-TomlBasicString([string]$Value) {
   return $Value.Replace("\", "\\").Replace('"', '\"')
@@ -98,6 +119,7 @@ if (-not $SkipSmoke) {
 }
 
 [pscustomobject]@{
+  Status = "installed"
   Source = $skillRoot.Path
   Destination = $destination
   Server = $serverDir

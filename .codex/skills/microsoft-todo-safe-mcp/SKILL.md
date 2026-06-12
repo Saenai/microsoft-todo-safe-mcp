@@ -1,6 +1,12 @@
 ---
 name: microsoft-todo-safe-mcp
-description: Use when Codex needs to inspect, validate, operate, or integrate the local Microsoft To Do Safe MCP project on this laptop, including Microsoft To Do task/list management, safe plan workflows, MCP server startup checks, token-safe diagnostics, laptop-side health checks, and deciding whether to run doctor/test/typecheck/build. Do not use for generic todo advice unrelated to the local Microsoft To Do MCP server.
+description: Inspect, validate, operate, and develop a self-contained Microsoft To Do Safe MCP skill with bundled server. Use for Microsoft To Do task/list management, safe backup/plan/preview/apply workflows, MCP startup checks, token-safe diagnostics, and deciding whether to run doctor/test/typecheck/build.
+license: MIT; server/LICENSE has complete terms.
+metadata:
+  agentskills_version: "2026-06"
+  bundled_server: "true"
+  mcp_server_name: microsoft_todo_safe
+  compatibility: Windows PowerShell, Node.js 22+, Corepack/pnpm, outbound HTTPS, token file in AppData
 ---
 
 # Microsoft To Do Safe MCP
@@ -23,8 +29,8 @@ session start and ask the user to restart/reopen Codex after config changes.
 
 ## Repository And Install Locations
 
-- Repository source copy: `D:\SharedSpace\CODEX\projects\microsoft-todo-safe-mcp\.codex\skills\microsoft-todo-safe-mcp`
-- Installed local copy: `C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp`
+- Repository source copy: this skill directory.
+- Installed local copy: `%USERPROFILE%\.codex\skills\microsoft-todo-safe-mcp`
 - Server source/build root inside the skill: `server\`
 
 Treat the repository copy as the versioned source of truth. Sync it to the
@@ -37,7 +43,17 @@ powershell -ExecutionPolicy Bypass -File .codex\skills\microsoft-todo-safe-mcp\s
 ```
 
 The installer copies the complete skill package, installs/builds the bundled
-server, updates `C:\Users\higik\.codex\config.toml`, and runs an MCP smoke test.
+server, updates `%USERPROFILE%\.codex\config.toml`, and runs an MCP smoke test.
+
+Runtime requirements: Windows PowerShell, Node.js 22+, Corepack/pnpm, outbound
+HTTPS for Microsoft Graph, and a token file at
+`%APPDATA%\microsoft-todo-mcp\tokens.json`.
+
+For script usage:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1 -Help
+```
 
 ## Core Rule
 
@@ -76,10 +92,8 @@ explicit confirmation.
 
 ## Local Paths
 
-- Repository: `D:\SharedSpace\CODEX\projects\microsoft-todo-safe-mcp`
-- Installed server: `C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\server`
+- Installed server: `%USERPROFILE%\.codex\skills\microsoft-todo-safe-mcp\server`
 - Token: `%APPDATA%\microsoft-todo-mcp\tokens.json`
-- Handoff report: `D:\SharedSpace\CODEX\handoff\outbox\ai-todo-laptop-agent-report-2026-06-11.md`
 
 The token may be checked for existence, size, timestamps, field names, and
 expiry metadata only. Never print token values.
@@ -104,7 +118,7 @@ pnpm 10.21.0 in this project
 For normal MCP server startup, prefer the built server entry:
 
 ```powershell
-cd C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\server
+cd $env:USERPROFILE\.codex\skills\microsoft-todo-safe-mcp\server
 node dist\todo-index.js
 ```
 
@@ -114,7 +128,7 @@ harness that keeps stdin open.
 To smoke-test the configured server without touching Microsoft Graph:
 
 ```powershell
-node C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\scripts\mcp_smoke.mjs
+node $env:USERPROFILE\.codex\skills\microsoft-todo-safe-mcp\scripts\mcp_smoke.mjs
 ```
 
 This only runs `initialize` and `tools/list`.
@@ -124,7 +138,7 @@ This only runs `initialize` and `tools/list`.
 Use light checks first:
 
 ```powershell
-cd C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\server
+cd $env:USERPROFILE\.codex\skills\microsoft-todo-safe-mcp\server
 git status --short --branch
 node --version
 corepack pnpm --version
@@ -151,3 +165,4 @@ or deciding whether to run `doctor`.
   and why before starting.
 - Do not use parallel shell execution on this Windows laptop for this project;
   it has repeatedly triggered `CreateProcessWithLogonW 1056`.
+- Keep file references relative to the skill root when editing this package.
