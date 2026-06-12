@@ -1,0 +1,4 @@
+interface:
+  display_name: "Microsoft To Do Safe MCP"
+  short_description: "Use the validated Microsoft To Do Safe MCP server safely."
+  default_prompt: "Use Microsoft To Do Safe MCP to inspect, plan, and safely manage Microsoft To Do tasks without exposing tokens or performing destructive actions."
