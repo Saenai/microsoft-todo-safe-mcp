@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { appendFileSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { join, resolve, sep } from "path"
+import { pathToFileURL } from "url"
 import dotenv from "dotenv"
 import { tokenManager } from "./token-manager.js"
 import { proposePlanFromBackup, summarizePlanProposal } from "./plan-proposer.js"
@@ -2383,8 +2384,9 @@ export async function startServer(config?: ServerConfig): Promise<void> {
     // Note: Token management is now handled by the TokenManager class
     // Config options are kept for backward compatibility but not used
 
-    // Check if using a personal Microsoft account and show warning if needed
-    await isPersonalMicrosoftAccount()
+    if (process.env.MSTODO_STARTUP_ACCOUNT_CHECK === "1") {
+      await isPersonalMicrosoftAccount()
+    }
 
     // Start the server
     const transport = new StdioServerTransport()
@@ -2398,7 +2400,7 @@ export async function startServer(config?: ServerConfig): Promise<void> {
 }
 
 // Main entry point when executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   startServer().catch((error) => {
     console.error("Fatal error in main():", error)
     process.exit(1)
