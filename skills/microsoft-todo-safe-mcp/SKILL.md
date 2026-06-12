@@ -24,26 +24,33 @@ Use this skill when the user says things like:
 
 In a fresh Codex session, the paired MCP server should appear as
 `microsoft_todo_safe` from `C:\Users\higik\.codex\config.toml`. If the MCP tools
-are not available in the active session, explain that Codex loads MCP servers at
-session start and ask the user to restart/reopen Codex after config changes.
+are not available in the active session, first check whether this installed
+skill copy has been initialized. If initialization or config changes are needed,
+explain that Codex loads MCP servers at session start and ask the user to
+restart/reopen Codex after the initializer finishes.
 
 ## Repository And Install Locations
 
-- Repository source copy: this skill directory.
-- Installed local copy: `%USERPROFILE%\.codex\skills\microsoft-todo-safe-mcp`
+- Installed skill copy: this skill directory.
+- Project-local install example: `<workspace>\.agents\skills\microsoft-todo-safe-mcp`
+- User-wide install example: `%USERPROFILE%\.codex\skills\microsoft-todo-safe-mcp`
 - Server source/build root inside the skill: `server\`
 
-Treat the repository copy as the versioned source of truth. Sync it to the
-installed local copy when changing skill behavior.
+Treat the currently loaded skill directory as the source for operation. Do not
+assume the user has cloned the development repository.
 
-Install or refresh the local copy with:
+After installing this skill with a skills manager, initialize the bundled MCP
+server from the installed skill copy:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\microsoft-todo-safe-mcp\scripts\install.ps1
+powershell -ExecutionPolicy Bypass -File .agents\skills\microsoft-todo-safe-mcp\scripts\install.ps1
 ```
 
-The installer copies the complete skill package, installs/builds the bundled
-server, updates `%USERPROFILE%\.codex\config.toml`, and runs an MCP smoke test.
+If the skill is installed somewhere else, run that copy's `scripts\install.ps1`.
+By default the initializer installs/builds the bundled server in the current
+skill copy, updates `%USERPROFILE%\.codex\config.toml`, and runs an MCP smoke
+test. Use `-DestinationRoot` only when intentionally copying the skill to a
+different skills directory.
 
 Runtime requirements: Windows PowerShell, Node.js 22+, Corepack/pnpm, outbound
 HTTPS for Microsoft Graph, and a token file at
@@ -115,10 +122,22 @@ node v22.22.3 or newer
 pnpm 10.21.0 in this project
 ```
 
+First-use readiness check:
+
+```powershell
+Test-Path .\server\dist\todo-index.js
+```
+
+Run this from the installed skill directory. If it returns `False`, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1
+```
+
 For normal MCP server startup, prefer the built server entry:
 
 ```powershell
-cd $env:USERPROFILE\.codex\skills\microsoft-todo-safe-mcp\server
+cd <installed-skill>\server
 node dist\todo-index.js
 ```
 
@@ -128,7 +147,7 @@ harness that keeps stdin open.
 To smoke-test the configured server without touching Microsoft Graph:
 
 ```powershell
-node $env:USERPROFILE\.codex\skills\microsoft-todo-safe-mcp\scripts\mcp_smoke.mjs
+node <installed-skill>\scripts\mcp_smoke.mjs
 ```
 
 This only runs `initialize` and `tools/list`.
@@ -138,8 +157,7 @@ This only runs `initialize` and `tools/list`.
 Use light checks first:
 
 ```powershell
-cd $env:USERPROFILE\.codex\skills\microsoft-todo-safe-mcp\server
-git status --short --branch
+cd <installed-skill>\server
 node --version
 corepack pnpm --version
 corepack pnpm run typecheck

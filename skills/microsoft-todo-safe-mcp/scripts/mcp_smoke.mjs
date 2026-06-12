@@ -1,17 +1,26 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const skillDir = dirname(scriptDir);
 const serverDir = join(skillDir, "server");
+const serverEntry = join(serverDir, "dist", "todo-index.js");
+
+if (!existsSync(serverEntry)) {
+  console.error(`Built MCP server entry not found: ${serverEntry}`);
+  console.error("Initialize this installed skill copy first:");
+  console.error(`powershell -ExecutionPolicy Bypass -File "${join(skillDir, "scripts", "install.ps1")}"`);
+  process.exit(1);
+}
 
 const child = spawn("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", [
   "-NoProfile",
   "-ExecutionPolicy",
   "Bypass",
   "-Command",
-  `Set-Location -LiteralPath '${serverDir}'; & 'C:\\Program Files\\nodejs\\node.exe' 'dist\\todo-index.js'`,
+  `Set-Location -LiteralPath '${serverDir}'; & 'C:\\Program Files\\nodejs\\node.exe' '${serverEntry}'`,
 ], {
   stdio: ["pipe", "pipe", "pipe"],
 });

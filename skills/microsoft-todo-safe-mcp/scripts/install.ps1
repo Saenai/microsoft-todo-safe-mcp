@@ -1,5 +1,5 @@
 param(
-  [string]$DestinationRoot = (Join-Path $env:USERPROFILE ".codex\skills"),
+  [string]$DestinationRoot,
   [string]$CodexConfig = (Join-Path $env:USERPROFILE ".codex\config.toml"),
   [switch]$SkipBuild,
   [switch]$SkipSmoke,
@@ -16,7 +16,7 @@ Usage:
   powershell -ExecutionPolicy Bypass -File scripts\install.ps1 [options]
 
 Options:
-  -DestinationRoot <path>  Skills directory. Default: %USERPROFILE%\.codex\skills
+  -DestinationRoot <path>  Skills directory. Default: parent directory of this skill copy.
   -CodexConfig <path>      Codex config.toml path. Default: %USERPROFILE%\.codex\config.toml
   -SkipBuild               Copy/configure only; do not run pnpm install/build.
   -SkipSmoke               Do not run the MCP initialize/tools-list smoke test.
@@ -93,6 +93,9 @@ startup_timeout_sec = 20
 }
 
 $skillRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+if (-not $DestinationRoot) {
+  $DestinationRoot = Split-Path -Parent $skillRoot.Path
+}
 $destination = Join-Path $DestinationRoot "microsoft-todo-safe-mcp"
 
 Copy-SkillTree -Source $skillRoot.Path -Destination $destination

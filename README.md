@@ -21,15 +21,17 @@ Install with the `vercel-labs/skills` CLI from the repository root:
 npx skills add . --skill microsoft-todo-safe-mcp -a codex --copy
 ```
 
-Install or refresh the local Codex skill copy:
+Then initialize the installed skill copy. For a project-local Codex install,
+run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\microsoft-todo-safe-mcp\scripts\install.ps1
+powershell -ExecutionPolicy Bypass -File .agents\skills\microsoft-todo-safe-mcp\scripts\install.ps1
 ```
 
-The `skills` CLI copies the skill package. The bundled `install.ps1` also
-installs and builds the MCP server, updates the local Codex MCP config, and runs
-the smoke test.
+The `skills` CLI only copies the skill package. The bundled `install.ps1`
+installs and builds the MCP server in the installed copy, updates the local
+Codex MCP config, and runs the smoke test. If the skill is installed to a
+different directory, run that copy's `scripts\install.ps1`.
 
 After installing, restart/reopen Codex so it reloads skills and MCP servers.
 
