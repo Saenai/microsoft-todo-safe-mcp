@@ -25,9 +25,19 @@ session start and ask the user to restart/reopen Codex after config changes.
 
 - Repository source copy: `D:\SharedSpace\CODEX\projects\microsoft-todo-safe-mcp\.codex\skills\microsoft-todo-safe-mcp`
 - Installed local copy: `C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp`
+- Server source/build root inside the skill: `server\`
 
 Treat the repository copy as the versioned source of truth. Sync it to the
 installed local copy when changing skill behavior.
+
+Install or refresh the local copy with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .codex\skills\microsoft-todo-safe-mcp\scripts\install.ps1
+```
+
+The installer copies the complete skill package, installs/builds the bundled
+server, updates `C:\Users\higik\.codex\config.toml`, and runs an MCP smoke test.
 
 ## Core Rule
 
@@ -66,7 +76,8 @@ explicit confirmation.
 
 ## Local Paths
 
-- Project: `D:\SharedSpace\CODEX\projects\microsoft-todo-safe-mcp`
+- Repository: `D:\SharedSpace\CODEX\projects\microsoft-todo-safe-mcp`
+- Installed server: `C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\server`
 - Token: `%APPDATA%\microsoft-todo-mcp\tokens.json`
 - Handoff report: `D:\SharedSpace\CODEX\handoff\outbox\ai-todo-laptop-agent-report-2026-06-11.md`
 
@@ -93,7 +104,7 @@ pnpm 10.21.0 in this project
 For normal MCP server startup, prefer the built server entry:
 
 ```powershell
-cd D:\SharedSpace\CODEX\projects\microsoft-todo-safe-mcp
+cd C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\server
 node dist\todo-index.js
 ```
 
@@ -113,6 +124,7 @@ This only runs `initialize` and `tools/list`.
 Use light checks first:
 
 ```powershell
+cd C:\Users\higik\.codex\skills\microsoft-todo-safe-mcp\server
 git status --short --branch
 node --version
 corepack pnpm --version

@@ -1,11 +1,17 @@
 import { spawn } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const skillDir = dirname(scriptDir);
+const serverDir = join(skillDir, "server");
 
 const child = spawn("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", [
   "-NoProfile",
   "-ExecutionPolicy",
   "Bypass",
   "-Command",
-  "Set-Location -LiteralPath 'D:\\SharedSpace\\CODEX\\projects\\microsoft-todo-safe-mcp'; & 'C:\\Program Files\\nodejs\\node.exe' 'dist\\todo-index.js'",
+  `Set-Location -LiteralPath '${serverDir}'; & 'C:\\Program Files\\nodejs\\node.exe' 'dist\\todo-index.js'`,
 ], {
   stdio: ["pipe", "pipe", "pipe"],
 });
