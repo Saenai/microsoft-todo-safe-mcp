@@ -37,11 +37,12 @@ export function proposePlanFromBackup(backup: BackupEnvelope, options: ProposePl
   const limit = Math.max(1, Math.min(options.limit ?? defaultLimit, 50))
   const now = options.now ? new Date(options.now) : new Date()
   const actions: SafePlanAction[] = []
+  const listNames = new Map((backup.lists ?? []).map((list) => [list.id, list.displayName]))
 
   for (const [listId, tasks] of Object.entries(backup.tasks_by_list ?? {})) {
     for (const task of tasks) {
       if (actions.length >= limit) break
-      const action = proposeActionForTask(task, listId, actions.length + 1, now)
+      const action = proposeActionForTask(task, listId, listNames.get(listId), actions.length + 1, now)
       if (action) actions.push(action)
     }
     if (actions.length >= limit) break
@@ -57,12 +58,14 @@ export function proposePlanFromBackup(backup: BackupEnvelope, options: ProposePl
 function proposeActionForTask(
   task: BackupTask,
   sourceListId: string,
+  sourceListName: string | undefined,
   actionNumber: number,
   now: Date,
 ): SafePlanAction | undefined {
   if (!task.id || !task.title) return undefined
   if (task.status === "completed") return undefined
   if (isDueSoon(task, now)) return undefined
+  if (isSafeTargetList(sourceListName)) return undefined
 
   const base = {
     action_id: `a${String(actionNumber).padStart(3, "0")}`,
@@ -89,7 +92,7 @@ function proposeActionForTask(
     }
   }
 
-  if (looksNeedsReview(task.title)) {
+  if (looksNeedsReview(task.title, sourceListName)) {
     return {
       ...base,
       operation: "move_to_needs_review",
@@ -98,6 +101,10 @@ function proposeActionForTask(
   }
 
   return undefined
+}
+
+function isSafeTargetList(name: string | undefined): boolean {
+  return /^(🎞️\s*)?(archive|needs review|someday)$/i.test((name ?? "").trim())
 }
 
 function isDueSoon(task: BackupTask, now: Date): boolean {
@@ -119,10 +126,18 @@ function looksLikeProject(title: string): boolean {
   )
 }
 
-function looksNeedsReview(title: string): boolean {
-  return /\b(figure out|decide|check|look into|investigate|think about|review|confirm|maybe|整理|確認|検討)\b/i.test(
-    title,
+function looksNeedsReview(title: string, sourceListName: string | undefined): boolean {
+  return (
+    (isInboxLikeList(sourceListName) &&
+      /^\[(?:review(?::[^\]]+)?|tool|goal\?|rule|event|creative|learn(?:\/tool)?|place|study|media|agent)\]/i.test(
+        title.trim(),
+      )) ||
+    /\b(figure out|decide|check|look into|investigate|think about|review|confirm|maybe|整理|確認|検討)\b/i.test(title)
   )
+}
+
+function isInboxLikeList(name: string | undefined): boolean {
+  return /^(tasks?|タスク|to-resolve|inbox)$/i.test((name ?? "").trim())
 }
 
 export function parseProposePlanArgs(argv: string[]): ProposePlanCliArgs {

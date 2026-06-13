@@ -52,6 +52,52 @@ const backup = {
   },
 }
 
+const prefixedInboxBackup = {
+  schema_version: "1.0",
+  created_at: "2026-06-13T00:00:00.000Z",
+  lists: [
+    { id: "list-default", displayName: "タスク" },
+    { id: "list-to-resolve", displayName: "To-resolve" },
+    { id: "list-anime", displayName: "Anime" },
+    { id: "list-needs-review", displayName: "Needs Review" },
+  ],
+  tasks_by_list: {
+    "list-default": [
+      {
+        id: "task-prefixed-tool",
+        title: "[Tool] indextts",
+        status: "notStarted",
+      },
+      {
+        id: "task-prefixed-goal",
+        title: "[Goal?] llm量化交易",
+        status: "notStarted",
+      },
+    ],
+    "list-to-resolve": [
+      {
+        id: "task-prefixed-rule",
+        title: "[Rule] Todo items too many",
+        status: "notStarted",
+      },
+    ],
+    "list-anime": [
+      {
+        id: "task-domain-list",
+        title: "[Tool] anime tracker",
+        status: "notStarted",
+      },
+    ],
+    "list-needs-review": [
+      {
+        id: "task-already-safe",
+        title: "[Review: Tool] Local LLM",
+        status: "notStarted",
+      },
+    ],
+  },
+}
+
 test("proposePlanFromBackup emits only conservative operations", () => {
   const plan = proposePlanFromBackup(backup, {
     limit: 5,
@@ -77,6 +123,22 @@ test("proposePlanFromBackup emits only conservative operations", () => {
     true,
   )
   assert.equal(plan.actions[2].checklist_item?.display_name, "Define the next concrete step")
+})
+
+test("proposePlanFromBackup treats bracket-prefixed inbox tasks as review candidates", () => {
+  const plan = proposePlanFromBackup(prefixedInboxBackup, {
+    limit: 10,
+    now: "2026-06-13T00:00:00.000Z",
+  })
+
+  assert.deepEqual(
+    plan.actions.map((action) => [action.task_id, action.operation]),
+    [
+      ["task-prefixed-tool", "move_to_needs_review"],
+      ["task-prefixed-goal", "move_to_needs_review"],
+      ["task-prefixed-rule", "move_to_needs_review"],
+    ],
+  )
 })
 
 test("proposePlanFromBackup respects the action limit", () => {
