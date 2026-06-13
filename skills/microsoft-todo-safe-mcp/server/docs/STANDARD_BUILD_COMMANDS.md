@@ -1,4 +1,4 @@
-# Standard Build Commands for TypeScript/JavaScript Projects
+﻿# Standard Build Commands for TypeScript/JavaScript Projects
 
 ## Overview
 This document defines a standardized set of npm/pnpm scripts that should be used across all repositories for consistency and developer experience.
@@ -75,25 +75,25 @@ This document defines a standardized set of npm/pnpm scripts that should be used
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
     "build:watch": "tsup --watch",
-    
+
     // Code Quality
     "format": "prettier --write \"src/**/*.{ts,js,json}\" \"*.{json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json}\" \"*.{json,md}\"",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "typecheck": "tsc --noEmit",
-    
+
     // Testing
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    
+
     // Composite Commands
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck",
     "check:fix": "pnpm run format && pnpm run lint:fix && pnpm run typecheck",
     "ci": "pnpm run check && pnpm run build && pnpm run test",
     "precommit": "pnpm run check:fix && pnpm run build",
-    
+
     // Production
     "start": "node dist/index.js",
     "clean": "rm -rf dist coverage .turbo"

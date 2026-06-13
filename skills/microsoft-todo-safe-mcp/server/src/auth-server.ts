@@ -1,4 +1,4 @@
-// Authentication server for Microsoft Todo MCP service
+﻿// Authentication server for Microsoft Todo MCP service
 import dotenv from "dotenv"
 import express, { Request, Response } from "express"
 import fs from "fs"
@@ -283,9 +283,9 @@ app.get("/", (req: Request, res: Response) => {
     authInfo += `
         <div class="warning">
           <h3>⚠️ Important Note for Personal Microsoft Accounts</h3>
-          <p>The Microsoft Graph API has limitations for personal Microsoft accounts (outlook.com, hotmail.com, live.com, etc.). 
+          <p>The Microsoft Graph API has limitations for personal Microsoft accounts (outlook.com, hotmail.com, live.com, etc.).
           The To Do API is primarily designed for Microsoft 365 business accounts, not personal accounts.</p>
-          <p>If you use a personal Microsoft account, you may encounter a <strong>"MailboxNotEnabledForRESTAPI"</strong> error. 
+          <p>If you use a personal Microsoft account, you may encounter a <strong>"MailboxNotEnabledForRESTAPI"</strong> error.
           This is a Microsoft service limitation, not an issue with this application's code or authentication setup.</p>
         </div>
     `
@@ -499,9 +499,9 @@ app.get("/callback", async (req: Request, res: Response) => {
             <h1>Authentication Successful!</h1>
             <p>You can now close this window and use the Microsoft Todo MCP service.</p>
           </div>
-          
+
           ${warningMessage}
-          
+
           <div class="token-details">
             <h3>Token Details:</h3>
             <ul>
@@ -512,7 +512,7 @@ app.get("/callback", async (req: Request, res: Response) => {
               <li>Expires: ${new Date(expiresAt).toLocaleString()}</li>
             </ul>
           </div>
-          
+
           <div class="debug-info">
             <h3>Debug Information:</h3>
             <pre>${JSON.stringify(

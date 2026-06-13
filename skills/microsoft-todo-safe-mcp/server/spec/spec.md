@@ -1,4 +1,4 @@
-# Vision
+﻿# Vision
 
 This project provides a Model Context Protocol (MCP) service for Claude that allows you to interact with your Microsoft Todo tasks using natural language.
 
@@ -41,13 +41,13 @@ The current implementation supports the following actions:
 
 6. `create-task` - Create a new task in a specific list
    - Required: listId, title
-   - Optional: body, dueDateTime, startDateTime, importance, isReminderOn, 
+   - Optional: body, dueDateTime, startDateTime, importance, isReminderOn,
      reminderDateTime, status, categories
    - Example: `@mstodo create-task listId="LIST_ID" title="Finish report" dueDateTime="2023-12-31T23:59:59Z"`
 
 7. `update-task` - Update an existing task
    - Required: listId, taskId
-   - Optional: title, body, dueDateTime, startDateTime, importance, isReminderOn, 
+   - Optional: title, body, dueDateTime, startDateTime, importance, isReminderOn,
      reminderDateTime, status, categories
    - Note: Empty string for date fields will remove the date
    - Example: `@mstodo update-task listId="LIST_ID" taskId="TASK_ID" status="completed"`

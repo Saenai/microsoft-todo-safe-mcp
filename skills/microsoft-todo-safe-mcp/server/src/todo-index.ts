@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+﻿import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { appendFileSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
@@ -111,7 +111,7 @@ async function makeGraphRequest<T>(url: string, token: string, method = "GET", b
 =================================================================
 ERROR: MailboxNotEnabledForRESTAPI
 
-The Microsoft To Do API is not available for personal Microsoft accounts 
+The Microsoft To Do API is not available for personal Microsoft accounts
 (outlook.com, hotmail.com, live.com, etc.) through the Graph API.
 
 This is a limitation of the Microsoft Graph API, not an authentication issue.

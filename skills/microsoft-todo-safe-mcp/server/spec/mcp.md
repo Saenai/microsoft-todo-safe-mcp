@@ -1,4 +1,4 @@
-# Example Clients
+﻿# Example Clients
 Source: https://modelcontextprotocol.io/clients
 
 A list of applications that support MCP integrations
@@ -3835,13 +3835,13 @@ In this tutorial, you'll learn how to build a LLM-powered chatbot client that co
             ? "python"
             : "python3"
           : process.execPath;
-        
+
         this.transport = new StdioClientTransport({
           command,
           args: [serverScriptPath],
         });
         this.mcp.connect(this.transport);
-        
+
         const toolsResult = await this.mcp.listTools();
         this.tools = toolsResult.tools.map((tool) => {
           return {
@@ -5474,7 +5474,7 @@ This tutorial will primarily focus on tools.
         ```groovy
         dependencies {
           implementation platform("org.springframework.ai:spring-ai-mcp-server-spring-boot-starter")
-          implementation platform("org.springframework:spring-web")   
+          implementation platform("org.springframework:spring-web")
         }
         ```
       </Tab>
@@ -5512,15 +5512,15 @@ This tutorial will primarily focus on tools.
     @Service
     public class WeatherService {
 
-    	private final RestClient restClient;
+        private final RestClient restClient;
 
-    	public WeatherService() {
-    		this.restClient = RestClient.builder()
-    			.baseUrl("https://api.weather.gov")
-    			.defaultHeader("Accept", "application/geo+json")
-    			.defaultHeader("User-Agent", "WeatherApiClient/1.0 (your@email.com)")
-    			.build();
-    	}
+        public WeatherService() {
+            this.restClient = RestClient.builder()
+                .baseUrl("https://api.weather.gov")
+                .defaultHeader("Accept", "application/geo+json")
+                .defaultHeader("User-Agent", "WeatherApiClient/1.0 (your@email.com)")
+                .build();
+        }
 
       @Tool(description = "Get weather forecast for a specific latitude/longitude")
       public String getWeatherForecastByLocation(
@@ -5532,7 +5532,7 @@ This tutorial will primarily focus on tools.
           // - Wind speed and direction
           // - Detailed forecast description
       }
-    	
+
       @Tool(description = "Get weather alerts for a US state")
       public String getAlerts(
           @ToolParam(description = "Two-letter US state code (e.g. CA, NY") String state)
@@ -5560,14 +5560,14 @@ This tutorial will primarily focus on tools.
     @SpringBootApplication
     public class McpServerApplication {
 
-    	public static void main(String[] args) {
-    		SpringApplication.run(McpServerApplication.class, args);
-    	}
+        public static void main(String[] args) {
+            SpringApplication.run(McpServerApplication.class, args);
+        }
 
-    	@Bean
-    	public ToolCallbackProvider weatherTools(WeatherService weatherService) {
-    		return  MethodToolCallbackProvider.builder().toolObjects(weatherService).build();
-    	}
+        @Bean
+        public ToolCallbackProvider weatherTools(WeatherService weatherService) {
+            return  MethodToolCallbackProvider.builder().toolObjects(weatherService).build();
+        }
     }
     ```
 
@@ -6530,7 +6530,7 @@ The client provides both synchronous and asynchronous APIs for flexibility in di
 
     // Call a tool
     CallToolResult result = client.callTool(
-        new CallToolRequest("calculator", 
+        new CallToolRequest("calculator",
             Map.of("operation", "add", "a", 2, "b", 3))
     );
 
@@ -6581,13 +6581,13 @@ The client provides both synchronous and asynchronous APIs for flexibility in di
         .flatMap(initResult -> client.listTools())
         .flatMap(tools -> {
             return client.callTool(new CallToolRequest(
-                "calculator", 
+                "calculator",
                 Map.of("operation", "add", "a", 2, "b", 3)
             ));
         })
         .flatMap(result -> {
             return client.listResources()
-                .flatMap(resources -> 
+                .flatMap(resources ->
                     client.readResource(new ReadResourceRequest("resource://uri"))
                 );
         })
@@ -6595,14 +6595,14 @@ The client provides both synchronous and asynchronous APIs for flexibility in di
             return client.listPrompts()
                 .flatMap(prompts ->
                     client.getPrompt(new GetPromptRequest(
-                        "greeting", 
+                        "greeting",
                         Map.of("name", "Spring")
                     ))
                 );
         })
         .flatMap(prompt -> {
             return client.addRoot(new Root("file:///path", "description"))
-                .then(client.removeRoot("file:///path"));            
+                .then(client.removeRoot("file:///path"));
         })
         .doFinally(signalType -> {
             client.closeGracefully().subscribe();
@@ -6732,7 +6732,7 @@ Tools are server-side functions that clients can discover and execute. The MCP c
     ```java
     // List available tools asynchronously
     client.listTools()
-        .doOnNext(tools -> tools.forEach(tool -> 
+        .doOnNext(tools -> tools.forEach(tool ->
             System.out.println(tool.getName())))
         .subscribe();
 
@@ -6769,7 +6769,7 @@ Resources represent server-side data sources that clients can access using URI t
     ```java
     // List available resources asynchronously
     client.listResources()
-        .doOnNext(resources -> resources.forEach(resource -> 
+        .doOnNext(resources -> resources.forEach(resource ->
             System.out.println(resource.getName())))
         .subscribe();
 
@@ -6804,7 +6804,7 @@ The prompt system enables interaction with server-side prompt templates. These t
     ```java
     // List available prompt templates asynchronously
     client.listPrompts()
-        .doOnNext(prompts -> prompts.forEach(prompt -> 
+        .doOnNext(prompts -> prompts.forEach(prompt ->
             System.out.println(prompt.getName())))
         .subscribe();
 
@@ -7444,7 +7444,7 @@ Once connected to a compatible client, the server can request language model gen
             if (exchange.getClientCapabilities().sampling() == null) {
                 return new CallToolResult("Client does not support AI capabilities", false);
             }
-            
+
             // Create a sampling request
             McpSchema.CreateMessageRequest request = McpSchema.CreateMessageRequest.builder()
                 .content(new McpSchema.TextContent("Calculate: " + arguments.get("expression")))
@@ -7459,10 +7459,10 @@ Once connected to a compatible client, the server can request language model gen
                 .systemPrompt("You are a helpful calculator assistant. Provide only the numerical answer.")
                 .maxTokens(100)
                 .build();
-            
+
             // Request sampling from the client
             McpSchema.CreateMessageResult result = exchange.createMessage(request);
-            
+
             // Process the result
             String answer = result.content().text();
             return new CallToolResult(answer, false);
@@ -7489,7 +7489,7 @@ Once connected to a compatible client, the server can request language model gen
             if (exchange.getClientCapabilities().sampling() == null) {
                 return Mono.just(new CallToolResult("Client does not support AI capabilities", false));
             }
-            
+
             // Create a sampling request
             McpSchema.CreateMessageRequest request = McpSchema.CreateMessageRequest.builder()
                 .content(new McpSchema.TextContent("Calculate: " + arguments.get("expression")))
@@ -7504,7 +7504,7 @@ Once connected to a compatible client, the server can request language model gen
                 .systemPrompt("You are a helpful calculator assistant. Provide only the numerical answer.")
                 .maxTokens(100)
                 .build();
-            
+
             // Request sampling from the client
             return exchange.createMessage(request)
                 .map(result -> {
@@ -7605,4 +7605,3 @@ After Claude helps you build your server:
 Remember that Claude can help you modify and improve your server as requirements change over time.
 
 Need more guidance? Just ask Claude specific questions about implementing MCP features or troubleshooting issues that arise.
-
